@@ -1,0 +1,72 @@
+
+BEGIN {
+#程序初始化，设定一变量以记录目前最高处理封包的ID。
+     highest_packet_id = 0;
+     cnt1=0;
+     cnt2=0;
+}
+{
+   action = $1;
+   time = $2;
+   node_1 = $3;
+   node_2 = $4;
+   type = $5;
+   flow_id = $8; 
+   node_1_address = $9;
+   node_2_address = $10; 
+   seq_no = $11;
+   packet_id = $12;
+
+#记录目前最高的packet ID
+   if ( packet_id > highest_packet_id)
+	 highest_packet_id = packet_id;
+
+#记录封包的传送时间
+  #if ( start_time[packet_id] == 0 )  
+  if ( node_1 == "1" && node_2 == "0" &&type=="tcp" ) 
+  #{
+  {
+		start_time[packet_id] = time;
+		cnt1=cnt1+1;
+		#printf("%d %f\n", packet_id, start_time[packet_id] );
+  }
+
+#记录CBR (flow_id=2) 的接收时间
+   #if ( flow_id == 1 && action != "d" ) {
+   if ( node_1 == "0" && node_2 == "1" &&type=="ack") {	
+   	#1 0 tcp
+      #if ( action == "+" ) {
+      	if ( 1 ) {
+         end_time[packet_id] = time;
+        cnt2=cnt2+1;
+         #printf("%d %f\n", highest_packet_id, end_time[packet_id] );
+      }
+   } else {
+#把不是flow_id=2的封包或者是flow_id=2但此封包被drop的时间设为-1
+      end_time[packet_id] = -1;
+      cnt2=cnt2+1;
+   }
+}							  
+END {
+#当数据列全部读取完后，开始计算有效封包的端点到端点延迟时间 
+
+   if(cnt1>=cnt2){
+   		highest_packet_id=cnt1;
+   }
+   else
+   	{
+   		highest_packet_id=cnt2;
+   	}
+   	
+    #printf("%d\n", highest_packet_id );
+    for ( packet_id = 0; packet_id <= highest_packet_id; packet_id++ ) {
+       start = start_time[packet_id];
+       end = end_time[packet_id];
+       packet_duration = end - start;
+
+    printf("%f %f\n", start, packet_duration);
+
+#只把接收时间大于传送时间的记录列出来
+       if ( start < end ) printf("%f %f\n", start, packet_duration);
+   }
+}
