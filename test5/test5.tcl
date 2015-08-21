@@ -35,7 +35,8 @@
 # ======================================================================
 # Define options
 # ======================================================================
-set opt(chan)           Channel/WirelessChannel    ;# channel type
+#pro1 opt??
+set opt(chan)           Channel/WirelessChannel    ;# channel type 信道类型
 set opt(prop)           Propagation/TwoRayGround   ;# radio-propagation model
 set opt(netif)          Phy/WirelessPhy            ;# network interface type
 set opt(mac)            Mac/802_11                 ;# MAC type
@@ -45,20 +46,17 @@ set opt(ant)            Antenna/OmniAntenna        ;# antenna model
 set opt(ifqlen)         50                         ;# max packet in ifq
 set opt(nn)             3                          ;# number of mobilenodes
 set opt(adhocRouting)   DSDV                       ;# routing protocol
-
+#pro2 opt(cp) ?? opt(sc)
 set opt(cp)             ""                         ;# connection pattern file
-set opt(sc)     "scen-test2"    ;# node movement file. 
+set opt(sc)     "scen-test2"    ;                   # node movement file. 
 
 set opt(x)      1000                            ;# x coordinate of topology
 set opt(y)      1000                           ;# y coordinate of topology
 set opt(seed)   0.0                            ;# seed for random number gen.
 set opt(stop)   250                            ;# time to stop simulation
-
+#pro3 下面的作用？
 set opt(ftp1-start)      160.0
 set opt(ftp2-start)      170.0
-
-
-
 set num_wired_nodes      2
 set num_bs_nodes         1
 
@@ -67,6 +65,7 @@ set num_bs_nodes         1
 if { $opt(x) == 0 || $opt(y) == 0 } {
 	puts "No X-Y boundary values given for wireless topology\n"
 }
+#pro4 为什么检测>0的时候
 if {$opt(seed) > 0} {
 	puts "Seeding Random number generator with $opt(seed)\n"
 	ns-random $opt(seed)
@@ -76,16 +75,22 @@ if {$opt(seed) > 0} {
 set ns_   [new Simulator]
 
 # set up for hierarchical routing
+#混合网络必须采用分层路由以便能够在有线网络和无线网络之间传递数据包，ns中，有线网络是基于拓扑
+#连接关系的，ns用这个连接信息在节点之间传递转发表，而无线中没有链路的概念，数据包在无线拓扑中根
+#据adhoc路由选路，这种路由根据相邻之间传递的路由请求建立转发表，如果要在无线和有线之间建立连接
+#必须要用到基站作为网关，通过分层拓扑结构定义了域和子域
 $ns_ node-config -addressType hierarchical
 AddrParams set domain_num_ 2           ;# number of domains
 lappend cluster_num 2 1                ;# number of clusters in each domain
 AddrParams set cluster_num_ $cluster_num
 lappend eilastlevel 1 1 4              ;# number of nodes in each cluster 
 AddrParams set nodes_num_ $eilastlevel ;# of each domain
-
-set tracefd  [open test.tr w]
+#以上意思是，有两个域，域中节点定于数分别是2,1，第一个域有两个簇，第二个域有一个簇。1 1 4代表，前面两个
+#簇中每个簇有一个节点，第三个簇中有4个节点
+set tracefd  [open test.tr w]  ;#跟踪对象,数据都输出到test.tr里面
 set namtrace [open test.nam w]
 $ns_ trace-all $tracefd
+#pro6 下面这段代码作用？
 $ns_ namtrace-all-wireless $namtrace $opt(x) $opt(y)
 
 
@@ -96,11 +101,14 @@ set f1 [open tcp2_rtt.tr w]
 set topo   [new Topography]
 
 # define topology
+#设置移动场景范围
 $topo load_flatgrid $opt(x) $opt(y)
 
 # create God
+# GOD可以记录网络中所有的节点信息和邻居信息
+#pro7为什么要这样写呢？？
 create-god [expr $opt(nn) + $num_bs_nodes]
-
+#  pro8 下面这两句是什么意思？
 #create wired nodes
 set temp {0.0.0 0.1.0}        ;# hierarchical addresses for wired domain
 for {set i 0} {$i < $num_wired_nodes} {incr i} {
@@ -156,7 +164,7 @@ $ns_ duplex-link $W(1) $BS(0) 5Mb 20ms DropTail
 $ns_ duplex-link-op $W(0) $W(1) orient right-down
 $ns_ duplex-link-op $W(1) $BS(0) orient right
 
-
+#pro9 下面这段代码作用？
 $ns_ queue-limit $W(1) $BS(0) 10
 
 $ns_ at 0.0 "$node_(0) label Client"
@@ -171,6 +179,7 @@ $ns_ at 0.0 "$W(1) label Route"
 $ns_ at 0.0 "$BS(0) label BS"
 
 # setup TCP connections
+#pro9 简单介绍一下，下面的两部分代码
 set tcp1 [new Agent/TCP/Vegas]
 $tcp1 set class_ 1
 set sink1 [new Agent/TCPSink]
@@ -221,7 +230,7 @@ for {set i 0} {$i < $opt(nn)} {incr i} {
 
     $ns_ initial_node_pos $node_($i) 20
 }     
-
+#pro10 记录的内容放到哪了？
 proc record {} {
   global ns_ f0 f1 tcp1 tcp2
 	set now [$ns_ now]
